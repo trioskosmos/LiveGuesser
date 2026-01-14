@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+*.pth
+!transformer_model.pth
