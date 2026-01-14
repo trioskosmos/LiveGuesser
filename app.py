@@ -402,7 +402,7 @@ with gr.Blocks(title="Love Live! Wordle AI") as demo:
 
     with gr.Row():
         with gr.Column(scale=2):
-            status_output = gr.Textbox(label="Game Status", value="Press 'New Game' to start!", interactive=False)
+            status_output = gr.Textbox(label="Game Status", value="Press 'New Game' to start!", interactive=False, lines=4)
             history_output = gr.TextArea(label="Guess History", interactive=False, lines=10)
             review_output = gr.TextArea(label="Game Review (Appears after Win)", interactive=False, lines=10)
 
@@ -410,13 +410,14 @@ with gr.Blocks(title="Love Live! Wordle AI") as demo:
             btn_new = gr.Button("New Game", variant="primary")
 
             gr.Markdown("### Make a Guess")
-            # OPTIMIZATION: Use filterable=True with full choices
             dd_song = gr.Dropdown(choices=all_songs, label="Song Name", interactive=True, filterable=True)
+
             dd_artist = gr.Dropdown(choices=all_artists, label="Artist Name", filterable=True)
             btn_guess_song = gr.Button("Guess Song")
 
             gr.Markdown("### Guess Live")
             dd_live = gr.Dropdown(choices=all_lives, label="Live Concert", interactive=True, filterable=True)
+
             btn_guess_live = gr.Button("Guess Live", variant="stop")
 
     with gr.Row():
