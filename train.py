@@ -5,11 +5,13 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import random
 import numpy as np
+import shutil
 from model import LoveLiveTransformer
 
 # Configuration
 BATCH_SIZE = 32
-EPOCHS = 50  # Enough to learn something, but quick
+EPOCHS = 100
+CHECKPOINT_EPOCH = 50
 LEARNING_RATE = 0.001
 MAX_SEQ_LEN = 20
 SAMPLES_PER_EPOCH = 1000
@@ -177,8 +179,16 @@ def train():
         accuracy = correct / total
         print(f"Epoch {epoch+1}/{EPOCHS} - Loss: {avg_loss:.4f} - Acc: {accuracy:.4f}")
 
-    print("Saving Model...")
-    torch.save(model.state_dict(), 'transformer_model.pth')
+        if (epoch + 1) == CHECKPOINT_EPOCH:
+            print(f"Saving Low Skill Model (Epoch {CHECKPOINT_EPOCH})...")
+            torch.save(model.state_dict(), 'transformer_model_low.pth')
+
+    print("Saving High Skill Model (Epoch {EPOCHS})...")
+    torch.save(model.state_dict(), 'transformer_model_high.pth')
+
+    print("Copying High Skill Model to transformer_model.pth...")
+    shutil.copy('transformer_model_high.pth', 'transformer_model.pth')
+
     print("Done!")
 
 if __name__ == "__main__":

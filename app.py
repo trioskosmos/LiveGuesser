@@ -40,6 +40,10 @@ def deserialize_game(state):
 
 # --- AI Model Loading ---
 
+models = {}
+ai_mappings = None
+device = torch.device('cpu') # Use CPU for HF Spaces inference usually
+
 try:
     with open('mappings.json', 'r') as f:
         ai_mappings = json.load(f)
@@ -50,23 +54,30 @@ try:
     num_feedback = 4
     num_lives = len(ai_mappings['live_to_idx'])
 
-    device = torch.device('cpu') # Use CPU for HF Spaces inference usually
-    if LoveLiveTransformer:
-        ai_model = LoveLiveTransformer(num_songs, num_artists, num_feedback, num_lives).to(device)
-    else:
-        raise Exception("LoveLiveTransformer class not available")
-
     if torch.cuda.is_available():
         map_loc = torch.device('cuda')
     else:
         map_loc = torch.device('cpu')
 
-    ai_model.load_state_dict(torch.load('transformer_model.pth', map_location=map_loc))
-    ai_model.eval()
-    print("AI Model Loaded")
+    if LoveLiveTransformer:
+        def load_model(path, name):
+            try:
+                m = LoveLiveTransformer(num_songs, num_artists, num_feedback, num_lives).to(device)
+                m.load_state_dict(torch.load(path, map_location=map_loc))
+                m.eval()
+                models[name] = m
+                print(f"Loaded {name} from {path}")
+            except Exception as e:
+                print(f"Failed to load {name} from {path}: {e}")
+
+        load_model('transformer_model.pth', 'Default (High)')
+        load_model('transformer_model_low.pth', 'Low Skill')
+        load_model('transformer_model_high.pth', 'High Skill')
+    else:
+        raise Exception("LoveLiveTransformer class not available")
+
 except Exception as e:
-    print(f"AI Model Load Failed: {e}")
-    ai_model = None
+    print(f"AI Model Initialization Failed: {e}")
     ai_mappings = None
 
 # --- Logic Functions ---
@@ -128,9 +139,23 @@ def get_entropy_hint(state):
         txt += f"- {game.songs[sid]['name']} (Score: {score:.4f})\n"
     return txt
 
-def get_ai_prediction(state):
-    if not ai_model or not ai_mappings:
+def get_ai_prediction(state, skill_level):
+    if skill_level == "Random":
+        return get_random_prediction(state)
+
+    if not models or not ai_mappings:
         return "AI Model not available."
+
+    # Map selection to model key
+    model_key = 'Default (High)'
+    if skill_level == 'Low (50 epochs)':
+        model_key = 'Low Skill'
+    elif skill_level == 'High (100 epochs)':
+        model_key = 'High Skill'
+
+    ai_model = models.get(model_key)
+    if not ai_model:
+        return f"Model '{model_key}' not loaded."
 
     game = deserialize_game(state)
     if not game.history:
@@ -166,7 +191,7 @@ def get_ai_prediction(state):
 
         top_k = torch.topk(probs, k=5)
 
-        txt = "AI Live Predictions:\n"
+        txt = f"AI Live Predictions ({skill_level}):\n"
         for i in range(len(top_k.indices)):
             idx = top_k.indices[i].item()
             prob = top_k.values[i].item()
@@ -178,6 +203,20 @@ def get_ai_prediction(state):
 
     except Exception as e:
         return f"AI Error: {e}"
+
+def get_random_prediction(state):
+    game = deserialize_game(state)
+    if not game.possible_live_ids:
+        return "No possible lives remaining."
+
+    candidates = list(game.possible_live_ids)
+    # Pick 5 random
+    picks = random.sample(candidates, k=min(5, len(candidates)))
+
+    txt = "Random Predictions:\n"
+    for i, lid in enumerate(picks):
+        txt += f"{i+1}. {game.lives[lid]['name']} (Random)\n"
+    return txt
 
 def format_history(game):
     txt = "History:\n"
@@ -261,6 +300,12 @@ with gr.Blocks(title="Love Live! Wordle AI") as demo:
             btn_hint_entropy = gr.Button("Get Entropy Hints")
             hint_output = gr.TextArea(label="Entropy Suggestions", interactive=False)
         with gr.Column():
+            gr.Markdown("### AI Assistant")
+            dd_ai_skill = gr.Dropdown(
+                choices=["Random", "Low (50 epochs)", "High (100 epochs)"],
+                value="High (100 epochs)",
+                label="AI Skill Level"
+            )
             btn_hint_ai = gr.Button("Get AI Predictions")
             ai_output = gr.TextArea(label="AI Model Analysis", interactive=False)
 
@@ -277,7 +322,7 @@ with gr.Blocks(title="Love Live! Wordle AI") as demo:
 
     btn_hint_entropy.click(get_entropy_hint, inputs=[state], outputs=[hint_output])
 
-    btn_hint_ai.click(get_ai_prediction, inputs=[state], outputs=[ai_output])
+    btn_hint_ai.click(get_ai_prediction, inputs=[state, dd_ai_skill], outputs=[ai_output])
 
 if __name__ == "__main__":
     demo.launch()
