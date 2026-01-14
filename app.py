@@ -198,36 +198,6 @@ all_songs = sorted([s['name'] for s in game_instance.songs.values()])
 all_artists = sorted([a['name'] for a in game_instance.artists.values()])
 all_lives = sorted([l['name'] for l in game_instance.lives.values()])
 
-def filter_songs(query, current_value):
-    if not query:
-        initial = all_songs[:20]
-        if current_value and current_value not in initial:
-            initial = [current_value] + initial
-        return gr.Dropdown(choices=initial)
-
-    filtered = [s for s in all_songs if query.lower() in s.lower()]
-    filtered = filtered[:20]
-
-    if current_value and current_value not in filtered:
-        filtered = [current_value] + filtered
-
-    return gr.Dropdown(choices=filtered)
-
-def filter_lives(query, current_value):
-    if not query:
-        initial = all_lives[:20]
-        if current_value and current_value not in initial:
-            initial = [current_value] + initial
-        return gr.Dropdown(choices=initial)
-
-    filtered = [l for l in all_lives if query.lower() in l.lower()]
-    filtered = filtered[:20]
-
-    if current_value and current_value not in filtered:
-        filtered = [current_value] + filtered
-
-    return gr.Dropdown(choices=filtered)
-
 with gr.Blocks(title="Love Live! Wordle AI") as demo:
     gr.Markdown("# Love Live! Setlist Guessing Game (AI Assisted)")
 
@@ -235,24 +205,20 @@ with gr.Blocks(title="Love Live! Wordle AI") as demo:
 
     with gr.Row():
         with gr.Column(scale=2):
-            status_output = gr.Textbox(label="Game Status", value="Press 'New Game' to start!", interactive=False)
+            status_output = gr.Textbox(label="Game Status", value="Press 'New Game' to start!", interactive=False, lines=4)
             history_output = gr.TextArea(label="Guess History", interactive=False, lines=10)
 
         with gr.Column(scale=1):
             btn_new = gr.Button("New Game", variant="primary")
 
             gr.Markdown("### Make a Guess")
-            search_song = gr.Textbox(label="Type to Search Song")
-            dd_song = gr.Dropdown(choices=all_songs[:20], label="Song Name", interactive=True, filterable=False)
-            search_song.change(filter_songs, inputs=[search_song, dd_song], outputs=dd_song)
+            dd_song = gr.Dropdown(choices=all_songs, label="Song Name", interactive=True, filterable=True)
 
             dd_artist = gr.Dropdown(choices=all_artists, label="Artist Name", filterable=True)
             btn_guess_song = gr.Button("Guess Song")
 
             gr.Markdown("### Guess Live")
-            search_live = gr.Textbox(label="Type to Search Live")
-            dd_live = gr.Dropdown(choices=all_lives[:20], label="Live Concert", interactive=True, filterable=False)
-            search_live.change(filter_lives, inputs=[search_live, dd_live], outputs=dd_live)
+            dd_live = gr.Dropdown(choices=all_lives, label="Live Concert", interactive=True, filterable=True)
 
             btn_guess_live = gr.Button("Guess Live", variant="stop")
 
