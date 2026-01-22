@@ -213,20 +213,25 @@ def generate_game_review(game):
 
 # --- Game State Management ---
 
-def init_game():
+def init_game(mode="Standard"):
     game = LoveLiveGame()
     target_id = game.start_game()
 
-    # Calculate AI Par
-    try:
-        ai_moves = run_agent_simulation(target_id, 'High')
-    except Exception:
-        ai_moves = 10 # Fallback
+    if mode == "Standard":
+        game.ai_moves = None
+        game.max_moves = None
+        msg = "Game Started! Guess the live concert.\nMode: Standard (Infinite Moves)"
+    else:
+        # Calculate AI Par
+        try:
+            ai_moves = run_agent_simulation(target_id, 'High')
+        except Exception:
+            ai_moves = 10 # Fallback
 
-    game.ai_moves = ai_moves
-    game.max_moves = max(6, ai_moves)
+        game.ai_moves = ai_moves
+        game.max_moves = max(6, ai_moves)
 
-    msg = f"Game Started! Guess the live concert.\nTarget to beat (AI): {ai_moves} moves.\nYou have {game.max_moves} moves."
+        msg = f"Game Started! Guess the live concert.\nMode: Challenge (AI Par)\nTarget to beat (AI): {ai_moves} moves.\nYou have {game.max_moves} moves."
 
     return serialize_game(game), msg, ""
 
@@ -258,6 +263,25 @@ def deserialize_game(state):
     return game
 
 # --- Logic Functions ---
+
+def filter_songs_by_artist(artist_name):
+    # Optimizes song selection by filtering based on artist
+    if not artist_name:
+        # Return all songs (sorted)
+        return gr.update(choices=sorted([s['name'] for s in game_instance.songs.values()]))
+
+    aid = game_instance.find_artist_id(artist_name)
+    if not aid:
+        return gr.update(choices=sorted([s['name'] for s in game_instance.songs.values()]))
+
+    # Filter songs
+    filtered_songs = []
+    for sid, song in game_instance.songs.items():
+        if aid in song['artist_ids']:
+            filtered_songs.append(song['name'])
+
+    filtered_songs.sort()
+    return gr.update(choices=filtered_songs, value=None)
 
 def guess_song(state, song_name, artist_name):
     game = deserialize_game(state)
@@ -446,6 +470,7 @@ with gr.Blocks(title="Love Live! Wordle AI") as demo:
             review_output = gr.TextArea(label="Game Review (Appears after Win)", interactive=False, lines=10)
 
         with gr.Column(scale=1):
+            radio_mode = gr.Radio(choices=["Standard", "Challenge (AI Par)"], value="Standard", label="Game Mode")
             btn_new = gr.Button("New Game", variant="primary")
 
             gr.Markdown("### Make a Guess")
@@ -474,7 +499,9 @@ with gr.Blocks(title="Love Live! Wordle AI") as demo:
             ai_output = gr.TextArea(label="AI Model Analysis", interactive=False)
 
     # Event Handlers
-    btn_new.click(init_game, inputs=None, outputs=[state, status_output, review_output])
+    dd_artist.change(fn=filter_songs_by_artist, inputs=dd_artist, outputs=dd_song)
+
+    btn_new.click(init_game, inputs=[radio_mode], outputs=[state, status_output, review_output])
 
     btn_guess_song.click(guess_song,
                          inputs=[state, dd_song, dd_artist],
