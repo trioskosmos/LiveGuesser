@@ -264,24 +264,13 @@ def deserialize_game(state):
 
 # --- Logic Functions ---
 
-def filter_songs_by_artist(artist_name):
-    # Optimizes song selection by filtering based on artist
-    if not artist_name:
-        # Return all songs (sorted)
-        return gr.update(choices=sorted([s['name'] for s in game_instance.songs.values()]))
+def search_songs(query):
+    if not query:
+        return gr.update(choices=all_songs[:100])
 
-    aid = game_instance.find_artist_id(artist_name)
-    if not aid:
-        return gr.update(choices=sorted([s['name'] for s in game_instance.songs.values()]))
-
-    # Filter songs
-    filtered_songs = []
-    for sid, song in game_instance.songs.items():
-        if aid in song['artist_ids']:
-            filtered_songs.append(song['name'])
-
-    filtered_songs.sort()
-    return gr.update(choices=filtered_songs, value=None)
+    query = query.lower()
+    matches = [s for s in all_songs if query in s.lower()]
+    return gr.update(choices=matches[:100], value=None)
 
 def guess_song(state, song_name, artist_name):
     game = deserialize_game(state)
@@ -474,7 +463,8 @@ with gr.Blocks(title="Love Live! Wordle AI") as demo:
             btn_new = gr.Button("New Game", variant="primary")
 
             gr.Markdown("### Make a Guess")
-            dd_song = gr.Dropdown(choices=all_songs, label="Song Name", interactive=True, filterable=True)
+            txt_search = gr.Textbox(label="Search Song (Type to filter choices)", placeholder="Type to search...")
+            dd_song = gr.Dropdown(choices=all_songs[:100], label="Song Name", interactive=True, filterable=True)
 
             dd_artist = gr.Dropdown(choices=all_artists, label="Artist Name", filterable=True)
             btn_guess_song = gr.Button("Guess Song")
@@ -499,7 +489,7 @@ with gr.Blocks(title="Love Live! Wordle AI") as demo:
             ai_output = gr.TextArea(label="AI Model Analysis", interactive=False)
 
     # Event Handlers
-    dd_artist.change(fn=filter_songs_by_artist, inputs=dd_artist, outputs=dd_song)
+    txt_search.change(fn=search_songs, inputs=txt_search, outputs=dd_song)
 
     btn_new.click(init_game, inputs=[radio_mode], outputs=[state, status_output, review_output])
 
