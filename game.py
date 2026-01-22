@@ -53,6 +53,9 @@ class LoveLiveGame:
         self.guessed_live_ids = set()
         self.history = [] # List of (song_id, artist_id, feedback)
 
+        self.ai_moves = None
+        self.max_moves = None
+
     def start_game(self, target_id=None):
         if target_id and target_id in self.lives:
             self.target_live_id = target_id
@@ -65,6 +68,8 @@ class LoveLiveGame:
         self.guessed_song_ids = set()
         self.guessed_live_ids = set()
         self.history = []
+        self.ai_moves = None
+        self.max_moves = None
 
         return self.target_live_id
 
